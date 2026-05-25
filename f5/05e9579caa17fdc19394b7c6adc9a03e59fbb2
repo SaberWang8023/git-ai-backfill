@@ -1,0 +1,86 @@
+.gitignore
+  h_5d7edba3f0edd2 1
+git-ai-backfill.md
+  s_33852b806b351f::t_05dc8806c316ef 1-138
+package.json
+  s_04219716e82c93::t_3fe2fe989af678 1-21
+git-ai-backfill.py
+  s_bdd4cba5e65af8::t_3a814575e6a6a6 1-357
+CLAUDE.md
+  s_9641f4e2ff75d1::t_512e90535e61c9 1-38
+README.md
+  s_ff2221bcece121::t_97de4bda9b5818 1-176
+skill/SKILL.md
+  s_88dbe47b2d5437::t_d7c6beaa7ce004 1-140
+bin/git-ai-backfill
+  s_d6d654d83a9895::t_3b207951d74d01 1-325
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.11",
+  "base_commit_sha": "f505e9579caa17fdc19394b7c6adc9a03e59fbb2",
+  "prompts": {},
+  "humans": {
+    "h_5d7edba3f0edd2": {
+      "author": "SaberWang <saberwang8023@163.com>"
+    }
+  },
+  "sessions": {
+    "s_04219716e82c93": {
+      "agent_id": {
+        "tool": "mock_ai",
+        "id": "ai-thread-1779700721737413000",
+        "model": "unknown"
+      },
+      "human_author": "SaberWang <saberwang8023@163.com>"
+    },
+    "s_33852b806b351f": {
+      "agent_id": {
+        "tool": "mock_ai",
+        "id": "ai-thread-1779700721686174000",
+        "model": "unknown"
+      },
+      "human_author": "SaberWang <saberwang8023@163.com>"
+    },
+    "s_88dbe47b2d5437": {
+      "agent_id": {
+        "tool": "mock_ai",
+        "id": "ai-thread-1779700721764071000",
+        "model": "unknown"
+      },
+      "human_author": "SaberWang <saberwang8023@163.com>"
+    },
+    "s_9641f4e2ff75d1": {
+      "agent_id": {
+        "tool": "mock_ai",
+        "id": "ai-thread-1779700721609041000",
+        "model": "unknown"
+      },
+      "human_author": "SaberWang <saberwang8023@163.com>"
+    },
+    "s_bdd4cba5e65af8": {
+      "agent_id": {
+        "tool": "mock_ai",
+        "id": "ai-thread-1779700721712492000",
+        "model": "unknown"
+      },
+      "human_author": "SaberWang <saberwang8023@163.com>"
+    },
+    "s_d6d654d83a9895": {
+      "agent_id": {
+        "tool": "mock_ai",
+        "id": "ai-thread-1779700721660173000",
+        "model": "unknown"
+      },
+      "human_author": "SaberWang <saberwang8023@163.com>"
+    },
+    "s_ff2221bcece121": {
+      "agent_id": {
+        "tool": "mock_ai",
+        "id": "ai-thread-1779700721635269000",
+        "model": "unknown"
+      },
+      "human_author": "SaberWang <saberwang8023@163.com>"
+    }
+  }
+}
