@@ -1,0 +1,21 @@
+{
+  "name": "git-ai-backfill",
+  "version": "1.0.0",
+  "description": "Backfill git-ai attribution for AI-generated code from agents without hooks support",
+  "bin": {
+    "git-ai-backfill": "./bin/git-ai-backfill"
+  },
+  "files": [
+    "bin/"
+  ],
+  "keywords": [
+    "git-ai",
+    "attribution",
+    "ai",
+    "checkpoint"
+  ],
+  "license": "MIT",
+  "engines": {
+    "node": ">=12.0.0"
+  }
+}
