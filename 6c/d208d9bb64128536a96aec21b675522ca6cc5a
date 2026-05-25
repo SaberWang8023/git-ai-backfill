@@ -1,0 +1,9 @@
+skill/git-ai-backfill/SKILL.md
+  ai_agent 1-125
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.11",
+  "base_commit_sha": "6cd208d9bb64128536a96aec21b675522ca6cc5a",
+  "prompts": {}
+}
