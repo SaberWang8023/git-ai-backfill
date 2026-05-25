@@ -158,33 +158,40 @@ def write_file_content(filepath: str, content: str) -> bool:
 PLACEHOLDER = "||__AI_LINE_PENDING__||\n"
 
 
-def do_mark_changes(files: List[str], dry_run: bool = False) -> None:
+def make_hook_input(tool: str, model: str) -> str:
+    import json
+    return json.dumps({"tool": tool, "model": model})
+
+
+def do_mark_changes(files: List[str], tool: str, model: str, dry_run: bool = False) -> None:
     print("\n[Mode: changes] Marking uncommitted changes as AI-authored...")
     print(f"  Files ({len(files)}):")
     for f in files:
         rel = os.path.relpath(f)
         print(f"    - {rel}")
 
+    hook_input = make_hook_input(tool, model)
     print("\n  Step 1/1: AI checkpoint (diff from HEAD → working tree marked as AI)...")
     for f in files:
         if dry_run:
             print(f"  [DRY RUN] git add {os.path.relpath(f)}")
-            print(f"  [DRY RUN] git-ai checkpoint mock_ai {os.path.relpath(f)}")
+            print(f"  [DRY RUN] git-ai checkpoint claude --hook-input '{hook_input}' {os.path.relpath(f)}")
         else:
             run_cmd(["git", "add", f])
-            run_cmd(["git-ai", "checkpoint", "mock_ai", f])
+            run_cmd(["git-ai", "checkpoint", "claude", "--hook-input", hook_input, f])
 
     print("\n  Done. The staged diff from HEAD is now attributed to AI.")
     print("  Run: git commit -m \"your message\"")
 
 
-def do_mark_full(files: List[str], dry_run: bool = False) -> None:
+def do_mark_full(files: List[str], tool: str, model: str, dry_run: bool = False) -> None:
     print("\n[Mode: full] Marking entire files as AI-authored...")
     print(f"  Files ({len(files)}):")
     for f in files:
         rel = os.path.relpath(f)
         print(f"    - {rel}")
 
+    hook_input = make_hook_input(tool, model)
     for f in files:
         content = get_file_content(f) if not dry_run else "dummy"
         if content is None:
@@ -215,13 +222,13 @@ def do_mark_full(files: List[str], dry_run: bool = False) -> None:
             run_cmd(["git", "add", f])
 
             print("    Step 4/4: Post-edit checkpoint (AI attribution)...")
-            run_cmd(["git-ai", "checkpoint", "mock_ai", f])
+            run_cmd(["git-ai", "checkpoint", "claude", "--hook-input", hook_input, f])
         else:
             print(f"\n  [DRY RUN] Processing: {rel}")
             print("    Step 1/4: [DRY RUN] Write placeholder content")
             print("    Step 2/4: [DRY RUN] git add + checkpoint mock_known_human")
             print("    Step 3/4: [DRY RUN] Restore original + git add")
-            print("    Step 4/4: [DRY RUN] checkpoint mock_ai")
+            print(f"    Step 4/4: [DRY RUN] git-ai checkpoint claude --hook-input '{hook_input}' {rel}")
 
     print("\n  Done. Run: git commit -m \"your message\"")
 
@@ -263,22 +270,19 @@ examples:
 
     parser.add_argument(
         "--tool",
-        default="claude",
+        default=os.environ.get("GIT_AI_BACKFILL_TOOL", "agent"),
         help=(
-            "AI agent tool name for the checkpoint record. "
-            "Affects the attribution metadata stored in the working log. "
-            "NOTE: When using mock_ai preset internally, this is informational only — "
-            "the actual agent_id.tool is always 'mock_ai'. "
-            "For real agent attribution, use git-ai checkpoint <agent-preset> instead."
+            "AI agent tool name. "
+            "Falls back to GIT_AI_BACKFILL_TOOL env var, then 'agent'."
         ),
     )
 
     parser.add_argument(
         "--model",
-        default="claude-sonnet-4.6",
+        default=os.environ.get("GIT_AI_BACKFILL_MODEL", "mock-ai"),
         help=(
-            "AI model name for attribution metadata. "
-            "Same note as --tool: informational when using mock_ai preset."
+            "AI model name. "
+            "Falls back to GIT_AI_BACKFILL_MODEL env var, then 'mock-ai'."
         ),
     )
 
@@ -348,9 +352,9 @@ examples:
         files = []
 
     if args.mode == "changes":
-        do_mark_changes(files, dry_run=args.dry_run)
+        do_mark_changes(files, tool=args.tool, model=args.model, dry_run=args.dry_run)
     elif args.mode == "full":
-        do_mark_full(files, dry_run=args.dry_run)
+        do_mark_full(files, tool=args.tool, model=args.model, dry_run=args.dry_run)
 
 
 if __name__ == "__main__":

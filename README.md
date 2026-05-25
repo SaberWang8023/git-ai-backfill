@@ -4,7 +4,7 @@
 
 ## 声明
 
-git-ai 的归因机制依赖 Coding Agent 的 hooks 集成——Agent 在编辑文件前后触发 checkpoint，系统才能识别 AI 产出。当使用不支持 hooks 的 Agent（如 OpenClaw、Hermes 等）时，即便代码确实由 AI 生成，git-ai 也无法自动记录，导致 AI 产出被漏计为人工代码。
+[git-ai](https://github.com/git-ai-project/git-ai) 的归因机制依赖 Coding Agent 的 hooks 集成——Agent 在编辑文件前后触发 checkpoint，系统才能识别 AI 产出。当使用不支持 hooks 的 Agent（如 OpenClaw、Hermes 等）时，即便代码确实由 AI 生成，git-ai 也无法自动记录，导致 AI 产出被漏计为人工代码。
 
 本工具用于解决上述归因缺失问题：对于确实由 AI 生成、但因 Agent 不支持 hooks 而未被记录的代码，可通过本工具补全 git-ai 中的归因信息。
 
@@ -13,7 +13,7 @@ git-ai 的归因机制依赖 Coding Agent 的 hooks 集成——Agent 在编辑�
 _注意：_
 
 - 本工具仅供学习和研究使用，请勿用于任何商业或实际工作中。
-- 使用本工具可能会导致 git 仓库历史记录混乱，请务必在注意。
+- 使用本工具可能会导致 git 仓库历史记录混乱，请务必注意。
 
 ## 安装
 
@@ -31,7 +31,7 @@ npm install -g .
 
 ## 前置条件
 
-- **git-ai** 已安装并在 PATH 中（[安装指南](https://github.com/anomalyco/git-ai)）
+- **git-ai** 已安装并在 PATH 中（[安装指南](https://usegitai.com/)）
 - 当前目录是 git 仓库
 - git-ai daemon 正在运行
 
