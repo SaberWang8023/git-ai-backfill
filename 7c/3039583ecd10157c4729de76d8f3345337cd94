@@ -1,0 +1,39 @@
+CLAUDE.md
+  s_043439a5a9315a::t_b215c3680416eb 3,5,7,9,11,13,15-20,23-24,28,30-32,34-35,37,39,41-45
+git-ai-backfill.py
+  s_043439a5a9315a::t_77c9cf7b1532d0 161-166,173,178,181
+  s_043439a5a9315a::t_6174ff7d0ef8e9 275,284
+  s_043439a5a9315a::t_a96a51fb13bd7e 187,194
+  s_043439a5a9315a::t_3139010206bb26 225,231
+  s_043439a5a9315a::t_d26b977bf23811 355,357
+  s_043439a5a9315a::t_47e493314a77a6 273,276,282,285
+bin/git-ai-backfill
+  s_043439a5a9315a::t_8528879779d1d6 325,327
+  s_043439a5a9315a::t_33145363e91051 154,161,192,198
+  s_043439a5a9315a::t_08424346e8405e 128-133,140,145,148
+  s_043439a5a9315a::t_e73521377a50e0 246,255
+  s_043439a5a9315a::t_22b7ae37702ea3 244,247,253,256
+README.md
+  h_5d7edba3f0edd2 7,16,34
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.11",
+  "base_commit_sha": "7c3039583ecd10157c4729de76d8f3345337cd94",
+  "prompts": {},
+  "humans": {
+    "h_5d7edba3f0edd2": {
+      "author": "SaberWang <saberwang8023@163.com>"
+    }
+  },
+  "sessions": {
+    "s_043439a5a9315a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6bcc0925-4178-450b-876b-a0d6d901ecfa",
+        "model": "claude-sonnet-4.6"
+      },
+      "human_author": "SaberWang <saberwang8023@163.com>"
+    }
+  }
+}
