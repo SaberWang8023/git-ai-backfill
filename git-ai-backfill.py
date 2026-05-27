@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-fake-ai-attribution.py — 将人类编写的代码标记为 AI 产出
+git-ai-backfill.py — 将人类编写的代码标记为 AI 产出
 
 通过 git-ai 的检查点机制，将工作区中的文件变更（或整个文件）
 在 git-ai 系统中被识别为 AI 编写的代码。
@@ -310,7 +310,7 @@ examples:
     args = parser.parse_args()
 
     print("=" * 60)
-    print("Fake AI Attribution Tool")
+    print("GIT AI BACKFILL Attribution Tool")
     print("=" * 60)
     print(f"  Mode:   {args.mode}")
     print(f"  Tool:   {args.tool}")
