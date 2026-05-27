@@ -1,0 +1,30 @@
+skill/git-ai-backfill/SKILL.md
+  s_4b603002e1b4a2::t_b6988099e446b6 48,50
+  s_4b603002e1b4a2::t_3b5c880752ae23 111,117
+  h_5d7edba3f0edd2 90
+  s_4b603002e1b4a2::t_f4567f2c8feecc 61,64,67
+  s_4b603002e1b4a2::t_4287212155668b 8-10,14
+skill/git-ai-backfill/scripts/git-ai-backfill.py
+  s_4b603002e1b4a2::t_a98b2dedd17dd2 1-361
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.11",
+  "base_commit_sha": "7208510a8167de282303cb93781052fc6977b644",
+  "prompts": {},
+  "humans": {
+    "h_5d7edba3f0edd2": {
+      "author": "SaberWang <saberwang8023@163.com>"
+    }
+  },
+  "sessions": {
+    "s_4b603002e1b4a2": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "93c72fda-aa21-45fd-a1db-3077f61f247b",
+        "model": "claude-sonnet-4.6"
+      },
+      "human_author": "SaberWang <saberwang8023@163.com>"
+    }
+  }
+}
