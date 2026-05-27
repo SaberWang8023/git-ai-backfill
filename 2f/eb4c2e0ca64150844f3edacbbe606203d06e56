@@ -1,0 +1,25 @@
+CLAUDE.md
+  s_4b603002e1b4a2::t_22ab8ff0062454 7,13-14
+  h_5d7edba3f0edd2 19,24
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.11",
+  "base_commit_sha": "2feb4c2e0ca64150844f3edacbbe606203d06e56",
+  "prompts": {},
+  "humans": {
+    "h_5d7edba3f0edd2": {
+      "author": "SaberWang <saberwang8023@163.com>"
+    }
+  },
+  "sessions": {
+    "s_4b603002e1b4a2": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "93c72fda-aa21-45fd-a1db-3077f61f247b",
+        "model": "claude-sonnet-4.6"
+      },
+      "human_author": "SaberWang <saberwang8023@163.com>"
+    }
+  }
+}
