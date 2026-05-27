@@ -5,11 +5,13 @@ description: 为不支持 git-ai hooks 的 Agent（如 OpenClaw、Hermes 等）�
 
 # git-ai-backfill
 
-通过 `git-ai-backfill` CLI 工具，利用 git-ai 的 checkpoint 机制，为因 Agent 不支持 hooks 而漏记的 AI 代码补全归因信息。
+利用 git-ai 的 checkpoint 机制，为因 Agent 不支持 hooks 而漏记的 AI 代码补全归因信息。
+
+**调用脚本**：skill 自带脚本，无需单独安装 `git-ai-backfill`。系统会在 system-reminder 中提供 `Base directory for this skill: <base_dir>`，脚本路径为 `<base_dir>/scripts/git-ai-backfill.py`，所有命令均使用 `python3 <base_dir>/scripts/git-ai-backfill.py` 替代 `git-ai-backfill`。
 
 ## 前置条件
 
-- git-ai 已安装并在 PATH 中
+- `git-ai` 已安装并在 PATH 中（这是 git-ai 生态的必要依赖）
 - 当前目录是 git 仓库
 - git-ai daemon 正在运行
 
@@ -43,9 +45,9 @@ description: 为不支持 git-ai hooks 的 Agent（如 OpenClaw、Hermes 等）�
 **必须先执行 dry-run 让用户确认**：
 
 ```bash
-git-ai-backfill --mode changes --dry-run
+python3 <base_dir>/scripts/git-ai-backfill.py --mode changes --dry-run
 # 或
-git-ai-backfill --mode full --files <file1> <file2> --dry-run
+python3 <base_dir>/scripts/git-ai-backfill.py --mode full --files <file1> <file2> --dry-run
 ```
 
 向用户展示 dry-run 输出，等待确认。
@@ -56,13 +58,13 @@ git-ai-backfill --mode full --files <file1> <file2> --dry-run
 
 ```bash
 # 标记未提交的改动
-git-ai-backfill --mode changes
+python3 <base_dir>/scripts/git-ai-backfill.py --mode changes
 
 # 标记整个文件
-git-ai-backfill --mode full --files <file>
+python3 <base_dir>/scripts/git-ai-backfill.py --mode full --files <file>
 
 # 指定模型信息
-git-ai-backfill --mode changes --tool claude --model claude-sonnet-4.6
+python3 <base_dir>/scripts/git-ai-backfill.py --mode changes --tool claude --model claude-sonnet-4.6
 ```
 
 ### 第 4 步：提示用户提交
@@ -84,14 +86,14 @@ git-ai stats HEAD --json
 
 ## 参数说明
 
-| 参数 | 默认值 | 说明 |
-|------|--------|------|
-| `--mode` | `changes` | 操作模式：`changes` 或 `full` |
-| `--files` | 自动检测 | 目标文件路径 |
-| `--tool` | `agent`（或 `GIT_AI_BACKFILL_TOOL` 环境变量） | AI 工具名，写入归因元数据 |
-| `--model` | `mock-ai`（或 `GIT_AI_BACKFILL_MODEL` 环境变量） | AI 模型名，写入归因元数据 |
-| `--session` | 自动生成 | 自定义会话 ID |
-| `--dry-run` | 关闭 | 预览模式，不实际执行 |
+| 参数        | 默认值                                           | 说明                          |
+| ----------- | ------------------------------------------------ | ----------------------------- |
+| `--mode`    | `changes`                                        | 操作模式：`changes` 或 `full` |
+| `--files`   | 自动检测                                         | 目标文件路径                  |
+| `--tool`    | `agent`（或 `GIT_AI_BACKFILL_TOOL` 环境变量）    | AI 工具名，写入归因元数据     |
+| `--model`   | `mock-ai`（或 `GIT_AI_BACKFILL_MODEL` 环境变量） | AI 模型名，写入归因元数据     |
+| `--session` | 自动生成                                         | 自定义会话 ID                 |
+| `--dry-run` | 关闭                                             | 预览模式，不实际执行          |
 
 ## 注意事项
 
@@ -106,13 +108,13 @@ git-ai stats HEAD --json
 用户: 我用 OpenClaw 写了一些代码，但它没有 git-ai hooks，帮我补填归因
 
 AI: 我来帮你补填。先预览一下会操作哪些文件：
-    [执行] git-ai-backfill --mode changes --dry-run
+    [执行] python3 <base_dir>/scripts/git-ai-backfill.py --mode changes --dry-run
     [展示输出]
     确认执行吗？
 
 用户: 确认
 
-AI: [执行] git-ai-backfill --mode changes
+AI: [执行] python3 <base_dir>/scripts/git-ai-backfill.py --mode changes
     完成。请执行以下命令提交使归因生效：
     git commit -m "your message"
 ```
