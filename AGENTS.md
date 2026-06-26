@@ -17,19 +17,21 @@
 
 **`--mode changes`**（默认）：将已追踪文件的未提交改动标记为 AI 产出。
 
-- 对每个文件执行 `git add <file>`，然后执行 `git-ai checkpoint claude --hook-input <json> <file>`。
+- 对每个文件执行 `git add <file>`，然后通过 stdin 把 `type=ai_agent` 的 JSON 喂给 `git-ai checkpoint agent-v1 --hook-input stdin`。
 - 若未指定 `--files`，通过 `git status --porcelain` 自动检测脏文件。
 
 **`--mode full`**：将整个文件内容标记为 AI 产出（需指定 `--files`）。
 
-- 流程：写入占位符 → `checkpoint mock_known_human`（人类基线）→ 恢复原始内容 → `checkpoint claude --hook-input <json>`。
+- 流程：写入占位符 → `checkpoint agent-v1`（`type=human` 人类基线）→ 恢复原始内容 → `checkpoint agent-v1`（`type=ai_agent`）。
 
 两种模式执行完成后，均需手动运行 `git commit` 使归因生效。
 
 ## 关键约束
 
-- `--tool` 和 `--model` 参数真正写入归因元数据，通过 `--hook-input` 传给 `git-ai checkpoint claude`。
-- `--model` 取值优先级：命令行参数 > 环境变量 `GIT_AI_BACKFILL_MODEL` > 默认值 `claude-sonnet-4.6`。
-- `--tool` 取值优先级：命令行参数 > 环境变量 `GIT_AI_BACKFILL_TOOL` > 默认值 `claude`。
+- 底层走 git-ai 的 `agent-v1` preset（见 https://usegitai.com/docs/cli/add-your-agent），是 git-ai 官方「接入自定义 Agent」的标准入口。
+- `--tool` 和 `--model` 真正写入归因元数据：`--tool` → `agent_name`、`--model` → `model`。
+- `--model` 取值优先级：命令行参数 > 环境变量 `GIT_AI_BACKFILL_MODEL` > 默认值 `mock-ai`。
+- `--tool` 取值优先级：命令行参数 > 环境变量 `GIT_AI_BACKFILL_TOOL` > 默认值 `agent`。
 - `--mode full` 必须配合 `--files`；`--mode changes` 在未指定 `--files` 时自动检测。
 - 已删除（`D`）或未追踪（`??`）的文件在自动检测时会被跳过。
+- hook_input 通过 `--hook-input stdin` 传递，文件路径放在 JSON 的 `edited_filepaths` 里（不作为命令行尾部参数，因为 agent-v1 不像 mock_ai 那样从尾部参数合成 hook_input）。

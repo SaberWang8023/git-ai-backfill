@@ -38,7 +38,7 @@ description: 为不支持 git-ai hooks 的 Agent（如 OpenClaw、Hermes 等）�
 2. **操作模式**：
    - `changes`（默认）：只标记未提交的改动（适合已修改但未提交的文件）
    - `full`：标记整个文件内容为 AI 产出（适合新文件）
-3. **模型信息**（可选）：使用的 AI 工具和模型，默认 `tool=agent`、`model=mock-ai`
+3. **Agent 信息**（可选）：使用的 AI 工具名与模型名（写入归因元数据），默认 `tool=agent`、`model=mock-ai`
 
 ### 第 2 步：预览操作（dry-run）
 
@@ -63,9 +63,11 @@ python3 <base_dir>/scripts/git-ai-backfill.py --mode changes
 # 标记整个文件
 python3 <base_dir>/scripts/git-ai-backfill.py --mode full --files <file>
 
-# 指定模型信息
-python3 <base_dir>/scripts/git-ai-backfill.py --mode changes --tool claude --model claude-sonnet-4.6
+# 指定 Agent 工具与模型（写入归因元数据）
+python3 <base_dir>/scripts/git-ai-backfill.py --mode changes --tool zcode --model glm-5.2
 ```
+
+底层调用为 `git-ai checkpoint agent-v1 --hook-input stdin`，由脚本通过 stdin 传入 `type=ai_agent` 的 JSON（含 `agent_name`/`model`/`conversation_id`），对应 git-ai 官方「接入自定义 Agent」的标准入口。
 
 ### 第 4 步：提示用户提交
 
@@ -90,9 +92,9 @@ git-ai stats HEAD --json
 | ----------- | ------------------------------------------------ | ----------------------------- |
 | `--mode`    | `changes`                                        | 操作模式：`changes` 或 `full` |
 | `--files`   | 自动检测                                         | 目标文件路径                  |
-| `--tool`    | `agent`（或 `GIT_AI_BACKFILL_TOOL` 环境变量）    | AI 工具名，写入归因元数据     |
-| `--model`   | `mock-ai`（或 `GIT_AI_BACKFILL_MODEL` 环境变量） | AI 模型名，写入归因元数据     |
-| `--session` | 自动生成                                         | 自定义会话 ID                 |
+| `--tool`    | `agent`（或 `GIT_AI_BACKFILL_TOOL` 环境变量）    | AI 工具名，写入归因的 `agent_name` |
+| `--model`   | `mock-ai`（或 `GIT_AI_BACKFILL_MODEL` 环境变量） | AI 模型名，写入归因的 `model` |
+| `--session` | 自动生成                                         | 自定义会话 ID（归因的 `conversation_id`） |
 | `--dry-run` | 关闭                                             | 预览模式，不实际执行          |
 
 ## 注意事项
@@ -100,7 +102,7 @@ git-ai stats HEAD --json
 1. **`--mode full` 必须配合 `--files`**：不能自动检测，需明确指定文件
 2. **不自动提交**：脚本只创建 checkpoint，用户需手动 `git commit`
 3. **归属边界效应**：git diff 的 hunk 边界可能导致相邻未修改行被意外归为 AI，这是 git-ai 的固有行为
-4. **tool/model 写入元数据**：通过 `--hook-input` 传给 `git-ai checkpoint claude`，真正写入归因记录
+4. **tool/model 真正写入元数据**：底层走 git-ai 的 `agent-v1` preset（见 https://usegitai.com/docs/cli/add-your-agent），`--tool` 写入 `agent_name`、`--model` 写入 `model`，是 git-ai 官方「接入自定义 Agent」的标准入口
 
 ## 示例交互
 

@@ -1,15 +1,22 @@
 #!/usr/bin/env python3
 """
-git-ai-backfill.py — 将人类编写的代码标记为 AI 产出
+git-ai-backfill.py — 为 git-ai 官方支持列表之外的 Coding Agent 补登记 AI 归因
 
-通过 git-ai 的检查点机制，将工作区中的文件变更（或整个文件）
-在 git-ai 系统中被识别为 AI 编写的代码。
+适用场景：使用了 git-ai 尚未集成 hooks 的 Agent（如 ZCode、OpenClaw、Hermes 等）
+产出的代码，由于这些 Agent 不会触发 checkpoint，git-ai 无法自动记录其归因。
+本工具手动补填这些缺失的 checkpoint，使代码在 git-ai 系统中被正确识别为 AI 产出。
 
-原理：
-  changes 模式：直接调用 `git-ai checkpoint mock_ai <file>`，
-    将 HEAD 与当前暂存区的 diff 标记为 AI 产出。
-  full 模式：先将文件替换为占位符并做 mock_known_human checkpoint（基线），
-    再恢复原始内容并做 mock_ai checkpoint，使全部内容被标为 AI。
+原理（基于 git-ai 的 agent-v1 preset，详见
+https://usegitai.com/docs/cli/add-your-agent）：
+
+  changes 模式：对脏文件执行 `git-ai checkpoint agent-v1`，
+    传入 type=ai_agent 的 hook_input，把 HEAD → 工作区的 diff 标为 AI 产出。
+    tool/model 由 --tool/--model（或对应环境变量）控制，真正写入归因元数据。
+
+  full 模式：先把文件替换为占位符并做 type=human 的 checkpoint（人类基线），
+    再恢复原始内容并做 type=ai_agent 的 checkpoint，使全部内容被标为 AI。
+
+两种模式执行完成后，均需手动运行 `git commit` 使归因生效。
 
 前置条件：
   - git-ai 已安装并在 PATH 中
@@ -24,12 +31,20 @@ import subprocess
 import sys
 import time
 from pathlib import Path
-from typing import List, Optional
+from typing import List, Optional, Tuple
 
 
-def run_cmd(cmd: List[str], dry_run: bool = False, capture: bool = True) -> Optional[str]:
+def run_cmd(
+    cmd: List[str],
+    dry_run: bool = False,
+    capture: bool = True,
+    stdin_data: Optional[str] = None,
+    verbose: bool = False,
+) -> Optional[str]:
+    """执行命令。dry_run 时只打印不执行。返回 stdout（capture 时）或空串。"""
     if dry_run:
-        print(f"  [DRY RUN] {' '.join(cmd)}")
+        suffix = f" <<'EOF'\n{stdin_data}\nEOF" if stdin_data is not None else ""
+        print(f"  [DRY RUN] {' '.join(cmd)}{suffix}")
         return None
     try:
         result = subprocess.run(
@@ -37,12 +52,15 @@ def run_cmd(cmd: List[str], dry_run: bool = False, capture: bool = True) -> Opti
             capture_output=capture,
             text=True,
             timeout=30,
+            input=stdin_data,
         )
         if result.returncode != 0:
             stderr = result.stderr.strip() if result.stderr else ""
             if capture and stderr:
                 print(f"  [WARN] command stderr: {stderr}", file=sys.stderr)
             return None
+        if verbose and capture and result.stderr:
+            print(f"  [VERBOSE] {result.stderr.strip()}", file=sys.stderr)
         return result.stdout.strip() if capture else ""
     except FileNotFoundError:
         print(f"  [ERROR] command not found: {cmd[0]}", file=sys.stderr)
@@ -67,7 +85,8 @@ def get_repo_root() -> Optional[str]:
 
 
 def get_dirty_files(repo_root: str) -> List[str]:
-    result = run_cmd(["git", "status", "--porcelain"])
+    """自动检测已修改、已暂存的已追踪文件；跳过已删除(D)和未追踪(??)。"""
+    result = run_cmd(["git", "-c", "core.quotePath=false", "status", "--porcelain"])
     if not result:
         return []
     files = []
@@ -79,27 +98,12 @@ def get_dirty_files(repo_root: str) -> List[str]:
         if len(parts) < 2:
             continue
         status = parts[0].strip()
-        filepath = parts[1].strip()
+        filepath = parts[1].strip().strip('"')
         if status.startswith("??"):
             continue
         if status.startswith("D "):
             continue
         abs_path = os.path.join(repo_root, filepath)
-        if os.path.isfile(abs_path):
-            files.append(abs_path)
-    return files
-
-
-def get_all_tracked_files(repo_root: str) -> List[str]:
-    result = run_cmd(["git", "ls-files"])
-    if not result:
-        return []
-    files = []
-    for line in result.split("\n"):
-        line = line.strip()
-        if not line:
-            continue
-        abs_path = os.path.join(repo_root, line)
         if os.path.isfile(abs_path):
             files.append(abs_path)
     return files
@@ -118,22 +122,6 @@ def resolve_file_paths(files: List[str], repo_root: str) -> List[str]:
             else:
                 print(f"  [WARN] file not found: {f} (resolved to {abs_path})", file=sys.stderr)
     return resolved
-
-
-def checkpoint_human(files: List[str], dry_run: bool = False) -> bool:
-    for f in files:
-        result = run_cmd(["git-ai", "checkpoint", "human", f], dry_run=dry_run)
-        if not dry_run and result is None:
-            print(f"  [WARN] human checkpoint failed for {f}", file=sys.stderr)
-    return True
-
-
-def checkpoint_mock_ai(files: List[str], dry_run: bool = False) -> bool:
-    for f in files:
-        result = run_cmd(["git-ai", "checkpoint", "mock_ai", f], dry_run=dry_run)
-        if not dry_run and result is None:
-            print(f"  [WARN] mock_ai checkpoint failed for {f}", file=sys.stderr)
-    return True
 
 
 def get_file_content(filepath: str) -> Optional[str]:
@@ -158,40 +146,111 @@ def write_file_content(filepath: str, content: str) -> bool:
 PLACEHOLDER = "||__AI_LINE_PENDING__||\n"
 
 
-def make_hook_input(tool: str, model: str) -> str:
-    import json
-    return json.dumps({"tool": tool, "model": model})
+def make_ai_hook_input(
+    repo_working_dir: str,
+    files: List[str],
+    tool: str,
+    model: str,
+    conversation_id: str,
+) -> str:
+    """生成 agent-v1 preset 的 type=ai_agent hook_input JSON。
+
+    agent_name → 写入归因的 tool；model → 写入归因的 model。
+    见上游 src/commands/checkpoint_agent/presets/agent_v1.rs。
+    """
+    return json.dumps({
+        "type": "ai_agent",
+        "repo_working_dir": repo_working_dir,
+        "edited_filepaths": files,
+        "agent_name": tool,
+        "model": model,
+        "conversation_id": conversation_id,
+    }, ensure_ascii=False)
 
 
-def do_mark_changes(files: List[str], tool: str, model: str, dry_run: bool = False) -> None:
+def make_human_hook_input(repo_working_dir: str, files: List[str]) -> str:
+    """生成 agent-v1 preset 的 type=human hook_input JSON（人类基线）。"""
+    return json.dumps({
+        "type": "human",
+        "repo_working_dir": repo_working_dir,
+        "will_edit_filepaths": files,
+    }, ensure_ascii=False)
+
+
+def checkpoint_agent_v1(
+    hook_input: str,
+    dry_run: bool = False,
+    verbose: bool = False,
+) -> None:
+    """通过 stdin 把 hook_input 喂给 `git-ai checkpoint agent-v1`。
+
+    用 --hook-input stdin 传递，避免命令行参数对 JSON 的转义问题。
+    文件路径已在 hook_input 中给出，无需作为尾部参数（agent-v1 不像
+    mock_ai 那样从尾部参数合成 hook_input）。
+    """
+    run_cmd(
+        ["git-ai", "checkpoint", "agent-v1", "--hook-input", "stdin"],
+        dry_run=dry_run,
+        stdin_data=hook_input,
+        verbose=verbose,
+    )
+
+
+def make_conversation_id(session: Optional[str]) -> str:
+    if session:
+        return session
+    return f"backfill-{int(time.time())}-{os.getpid()}"
+
+
+def do_mark_changes(
+    files: List[str],
+    repo_root: str,
+    tool: str,
+    model: str,
+    session: Optional[str],
+    dry_run: bool = False,
+    verbose: bool = False,
+) -> None:
     print("\n[Mode: changes] Marking uncommitted changes as AI-authored...")
     print(f"  Files ({len(files)}):")
     for f in files:
-        rel = os.path.relpath(f)
-        print(f"    - {rel}")
+        print(f"    - {os.path.relpath(f, repo_root)}")
 
-    hook_input = make_hook_input(tool, model)
+    conversation_id = make_conversation_id(session)
+    print(f"  Agent: {tool} / {model} / conversation={conversation_id}")
+
     print("\n  Step 1/1: AI checkpoint (diff from HEAD → working tree marked as AI)...")
     for f in files:
         if dry_run:
-            print(f"  [DRY RUN] git add {os.path.relpath(f)}")
-            print(f"  [DRY RUN] git-ai checkpoint claude --hook-input '{hook_input}' {os.path.relpath(f)}")
+            print(f"  [DRY RUN] git add {os.path.relpath(f, repo_root)}")
         else:
             run_cmd(["git", "add", f])
-            run_cmd(["git-ai", "checkpoint", "claude", "--hook-input", hook_input, f])
+
+    # 一次性把所有文件放进同一个 hook_input（agent-v1 支持多文件）。
+    hook_input = make_ai_hook_input(repo_root, files, tool, model, conversation_id)
+    checkpoint_agent_v1(hook_input, dry_run=dry_run, verbose=verbose)
 
     print("\n  Done. The staged diff from HEAD is now attributed to AI.")
     print("  Run: git commit -m \"your message\"")
 
 
-def do_mark_full(files: List[str], tool: str, model: str, dry_run: bool = False) -> None:
+def do_mark_full(
+    files: List[str],
+    repo_root: str,
+    tool: str,
+    model: str,
+    session: Optional[str],
+    dry_run: bool = False,
+    verbose: bool = False,
+) -> None:
     print("\n[Mode: full] Marking entire files as AI-authored...")
     print(f"  Files ({len(files)}):")
     for f in files:
-        rel = os.path.relpath(f)
-        print(f"    - {rel}")
+        print(f"    - {os.path.relpath(f, repo_root)}")
 
-    hook_input = make_hook_input(tool, model)
+    conversation_id = make_conversation_id(session)
+    print(f"  Agent: {tool} / {model} / conversation={conversation_id}")
+
     for f in files:
         content = get_file_content(f) if not dry_run else "dummy"
         if content is None:
@@ -200,14 +259,16 @@ def do_mark_full(files: List[str], tool: str, model: str, dry_run: bool = False)
         lines = content.split("\n")
         has_real_content = any(line.strip() for line in lines)
         if not has_real_content:
-            print(f"  [SKIP] {os.path.relpath(f)} — empty file")
+            print(f"  [SKIP] {os.path.relpath(f, repo_root)} — empty file")
             continue
 
-        placeholder_content = PLACEHOLDER * len([l for l in lines if l.strip() or l == lines[-1]])
+        placeholder_content = PLACEHOLDER * len(
+            [l for l in lines if l.strip() or l == lines[-1]]
+        )
         if not placeholder_content.endswith("\n") and content.endswith("\n"):
             placeholder_content += "\n"
 
-        rel = os.path.relpath(f)
+        rel = os.path.relpath(f, repo_root)
         if not dry_run:
             print(f"\n  Processing: {rel}")
             print("    Step 1/4: Write placeholder content...")
@@ -215,27 +276,30 @@ def do_mark_full(files: List[str], tool: str, model: str, dry_run: bool = False)
                 continue
             print("    Step 2/4: Stage + Pre-edit checkpoint (human baseline)...")
             run_cmd(["git", "add", f])
-            run_cmd(["git-ai", "checkpoint", "mock_known_human", f])
+            human_input = make_human_hook_input(repo_root, [f])
+            checkpoint_agent_v1(human_input, dry_run=False, verbose=verbose)
 
             print("    Step 3/4: Restore original content + stage...")
             write_file_content(f, content)
             run_cmd(["git", "add", f])
 
             print("    Step 4/4: Post-edit checkpoint (AI attribution)...")
-            run_cmd(["git-ai", "checkpoint", "claude", "--hook-input", hook_input, f])
+            ai_input = make_ai_hook_input(repo_root, [f], tool, model, conversation_id)
+            checkpoint_agent_v1(ai_input, dry_run=False, verbose=verbose)
         else:
             print(f"\n  [DRY RUN] Processing: {rel}")
             print("    Step 1/4: [DRY RUN] Write placeholder content")
-            print("    Step 2/4: [DRY RUN] git add + checkpoint mock_known_human")
+            print("    Step 2/4: [DRY RUN] git add + checkpoint agent-v1 (type=human)")
             print("    Step 3/4: [DRY RUN] Restore original + git add")
-            print(f"    Step 4/4: [DRY RUN] git-ai checkpoint claude --hook-input '{hook_input}' {rel}")
+            print("    Step 4/4: [DRY RUN] checkpoint agent-v1 (type=ai_agent)")
+            print(f"             ai_input={make_ai_hook_input(repo_root, [f], tool, model, conversation_id)}")
 
     print("\n  Done. Run: git commit -m \"your message\"")
 
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Mark human-written code as AI-authored in git-ai attribution system",
+        description="Backfill git-ai attribution for AI code from agents git-ai doesn't hook into",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 examples:
@@ -243,7 +307,7 @@ examples:
   %(prog)s --mode changes --files src/main.rs           Mark specific file changes as AI
   %(prog)s --mode full --files README.md                Mark entire file as AI
   %(prog)s --mode changes --dry-run                     Preview operations without executing
-  %(prog)s --mode changes --tool claude --model claude-sonnet-4-20250514
+  %(prog)s --mode changes --tool zcode --model glm-5.2  Custom agent tool/model
 """,
     )
 
@@ -272,7 +336,7 @@ examples:
         "--tool",
         default=os.environ.get("GIT_AI_BACKFILL_TOOL", "agent"),
         help=(
-            "AI agent tool name. "
+            "AI agent tool name written into attribution (agent_name in agent-v1). "
             "Falls back to GIT_AI_BACKFILL_TOOL env var, then 'agent'."
         ),
     )
@@ -281,7 +345,7 @@ examples:
         "--model",
         default=os.environ.get("GIT_AI_BACKFILL_MODEL", "mock-ai"),
         help=(
-            "AI model name. "
+            "AI model name written into attribution. "
             "Falls back to GIT_AI_BACKFILL_MODEL env var, then 'mock-ai'."
         ),
     )
@@ -290,8 +354,8 @@ examples:
         "--session",
         default=None,
         help=(
-            "Custom session ID for the AI attribution. "
-            "If not set, mock_ai generates a timestamp-based ID automatically."
+            "Custom conversation_id for the AI attribution. "
+            "If not set, a timestamp-based ID is generated automatically."
         ),
     )
 
@@ -323,7 +387,7 @@ examples:
 
     if not check_git_ai_installed():
         print("[ERROR] git-ai is not installed or not in PATH.", file=sys.stderr)
-        print("        Install from: https://github.com/anomalyco/git-ai", file=sys.stderr)
+        print("        Install from: https://usegitai.com/", file=sys.stderr)
         sys.exit(1)
 
     if not check_git_repo():
@@ -352,9 +416,15 @@ examples:
         files = []
 
     if args.mode == "changes":
-        do_mark_changes(files, tool=args.tool, model=args.model, dry_run=args.dry_run)
+        do_mark_changes(
+            files, repo_root, args.tool, args.model, args.session,
+            dry_run=args.dry_run, verbose=args.verbose,
+        )
     elif args.mode == "full":
-        do_mark_full(files, tool=args.tool, model=args.model, dry_run=args.dry_run)
+        do_mark_full(
+            files, repo_root, args.tool, args.model, args.session,
+            dry_run=args.dry_run, verbose=args.verbose,
+        )
 
 
 if __name__ == "__main__":
