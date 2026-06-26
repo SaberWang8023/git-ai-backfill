@@ -1,0 +1,19 @@
+TEST_AGENT_V1.md
+  s_181d4179195435::t_520942121acf9e 1-3
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.3",
+  "base_commit_sha": "f0292118fcd38f8ca0ca96f4736634f619a03aba",
+  "prompts": {},
+  "sessions": {
+    "s_181d4179195435": {
+      "agent_id": {
+        "tool": "zcode",
+        "id": "test-sess-001",
+        "model": "glm-5.2"
+      },
+      "human_author": "SaberWang <saberwang8023@163.com>"
+    }
+  }
+}
